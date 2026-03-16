@@ -10,10 +10,9 @@ CONFIG += c++20
 
 INCLUDEPATH += \
     inc/ \
-    QtCommonObject/inc/ \
 
 SOURCES += \
-    QtCommonObject/src/process_stat.cpp \
+    src/process_stat.cpp \
     src/dock_send_message.cpp \
     src/dock_signal_watcher.cpp \
     src/dbc_manager.cpp \
@@ -23,7 +22,7 @@ SOURCES += \
     src/mainwindow.cpp
 
 HEADERS += \
-    QtCommonObject/inc/process_stat.h \
+    inc/process_stat.h \
     inc/const.h \
     inc/dock_send_message.h \
     inc/dock_signal_watcher.h \
