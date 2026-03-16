@@ -1,0 +1,35 @@
+# Basé sur le style Qt
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+BreakBeforeBraces: Allman
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+SpaceBeforeParens: ControlStatements
+AlwaysBreakTemplateDeclarations: Yes
+AlignAfterOpenBracket: Align
+AlignOperands: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+SortIncludes: false
+IncludeBlocks: Preserve
+IndentCaseLabels: true
+
+# Namespace
+NamespaceIndentation: All
+
+# Function arguments
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# Pointer/reference formatting
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+# Wrapping
+ColumnLimit: 160
+PenaltyBreakAssignment: 10
+PenaltyReturnTypeOnItsOwnLine: 100
