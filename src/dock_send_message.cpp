@@ -59,7 +59,6 @@ void DockSendMessage::updateList()
 
     initListMessages();
 
-    // for (auto& item : messageToSend)
     for (int i = 0; i < messageToSend.size(); ++i)
     {
         MessageToSend& item = messageToSend[i];
@@ -103,6 +102,13 @@ void DockSendMessage::addMessage()
 void DockSendMessage::duplicateSelected()
 {
     if (ui == nullptr) return;
+
+    int currentRow = ui->list_send_message->currentRow();
+
+    if (currentRow < 0 || selectedIndex < 0) return;
+
+    messageToSend.append(messageToSend[selectedIndex]);
+    updateList();
 }
 
 void DockSendMessage::removeSelected()
