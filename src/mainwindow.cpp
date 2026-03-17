@@ -212,6 +212,8 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
     else
     {
         ui->table_can_messages->insertRow(row);
+
+        if (ui->action_autoscroll->isChecked()) ui->table_can_messages->scrollToBottom();
     }
 
     for (unsigned i = 0; i < NUMBER_TABLE_ROW; i++)

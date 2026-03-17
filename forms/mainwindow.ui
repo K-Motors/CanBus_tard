@@ -126,6 +126,7 @@
     <addaction name="actionForce_reload_DBC"/>
     <addaction name="separator"/>
     <addaction name="action_overwrite_mode"/>
+    <addaction name="action_autoscroll"/>
    </widget>
    <widget class="QMenu" name="menuMessages">
     <property name="title">
@@ -432,6 +433,20 @@
    </property>
    <property name="text">
     <string>Overwrite mode</string>
+   </property>
+  </action>
+  <action name="action_autoscroll">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Autoscroll</string>
+   </property>
+   <property name="toolTip">
+    <string>When not in overwrite mode, automatically scrolls to the bottom.</string>
    </property>
   </action>
  </widget>
