@@ -167,6 +167,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 void MainWindow::initMessageTable()
 {
+    mapIdLine.clear();
+    ui->table_can_messages->clear();
+    ui->table_can_messages->clearContents();
+    ui->table_can_messages->setRowCount(0);
+
     ui->table_can_messages->setColumnCount(NUMBER_TABLE_ROW);
     ui->table_can_messages->setHorizontalHeaderLabels({"Time", "Name", "ID", "Std/Ext", "ASCII", "Raw Data"});
 
@@ -266,6 +271,7 @@ void MainWindow::connectDisconnectDevice()
     }
     else
     {
+        initMessageTable();
         int idx = ui->combo_can_device->currentIndex();
 
         if (idx == -1 || idx >= ui->combo_can_device->count()) return;
