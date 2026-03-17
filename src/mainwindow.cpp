@@ -192,13 +192,20 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
     QFont font = items[0]->font();
     font.setItalic(isItalic);
 
-    if (mapIdLine.contains(id))
+    if (ui->action_overwrite_mode->isChecked())
     {
-        row = mapIdLine[id];
+        if (mapIdLine.contains(id))
+        {
+            row = mapIdLine[id];
+        }
+        else
+        {
+            mapIdLine.insert(id, row);
+            ui->table_can_messages->insertRow(row);
+        }
     }
     else
     {
-        mapIdLine.insert(id, row);
         ui->table_can_messages->insertRow(row);
     }
 
