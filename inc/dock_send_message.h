@@ -6,12 +6,12 @@
 
 #include <QStyledItemDelegate>
 
-class DockSendMessage : public QObject
+class DockSendMessage : public QWidget
 {
     Q_OBJECT
 
   public:
-    DockSendMessage(CanDevice& canDevice, QObject* parent);
+    DockSendMessage(CanDevice& canDevice, QWidget* parent);
     ~DockSendMessage();
 
     void init(Ui::MainWindow* ui);
@@ -30,6 +30,9 @@ class DockSendMessage : public QObject
     void addMessage();
     void duplicateSelected();
     void removeSelected();
+    void saveMessages();
+    void loadMessages();
+    void sendMessage();
 
     void onListItemSelected(QListWidgetItem* item);
     void onSignalCellClicked(int row, int col);

@@ -1,10 +1,11 @@
 #include "dock_send_message.h"
 
 #include <QInputDialog>
+#include <QMessageBox>
 
 constexpr int EDITABLE_COL = 1;
 
-DockSendMessage::DockSendMessage(CanDevice& CanDevice, QObject* parent) : QObject{parent}, ui{nullptr}, canDevice{CanDevice}, selectedIndex{-1}
+DockSendMessage::DockSendMessage(CanDevice& CanDevice, QWidget* parent) : QWidget{parent}, ui{nullptr}, canDevice{CanDevice}, selectedIndex{-1}
 {
 }
 
@@ -22,6 +23,9 @@ void DockSendMessage::init(Ui::MainWindow* ui)
     connect(ui->button_send_add, &QPushButton::clicked, this, [this]() { addMessage(); });
     connect(ui->button_send_duplicate, &QPushButton::clicked, this, [this]() { duplicateSelected(); });
     connect(ui->button_send_remove, &QPushButton::clicked, this, [this]() { removeSelected(); });
+    connect(ui->button_send_save, &QPushButton::clicked, this, [this]() { saveMessages(); });
+    connect(ui->button_send_load, &QPushButton::clicked, this, [this]() { loadMessages(); });
+    connect(ui->button_send_message, &QPushButton::clicked, this, [this]() { sendMessage(); });
 
     connect(ui->list_send_message, &QListWidget::itemClicked, this, &DockSendMessage::onListItemSelected);
     connect(ui->check_send_every, &QCheckBox::checkStateChanged, this, &DockSendMessage::onRepeatCheckStateChanged);
@@ -131,6 +135,27 @@ void DockSendMessage::removeSelected()
         selectedIndex = messageToSend.length() - 1;
     }
     updateList();
+}
+
+void DockSendMessage::saveMessages()
+{
+}
+
+void DockSendMessage::loadMessages()
+{
+}
+
+void DockSendMessage::sendMessage()
+{
+    if (ui == nullptr || selectedIndex < 0) return;
+
+    MessageToSend& message = messageToSend[selectedIndex];
+    QString        error;
+
+    if (canDevice.sendFrame(message.messageId, message.valuestoVariantMap(), &error) == false)
+    {
+        QMessageBox::critical(this, "Sending message", "Failed to send message.\n" + error);
+    }
 }
 
 void DockSendMessage::onListItemSelected(QListWidgetItem* item)
