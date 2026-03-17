@@ -47,4 +47,8 @@ void DockSignalWatcher::initTable()
     ui->table_watcher_signals->setColumnCount(3);
     ui->table_watcher_signals->setHorizontalHeaderLabels({"Name", "Unit", "Value"});
     ui->table_watcher_signals->horizontalHeader()->setStretchLastSection(true);
+
+    QHeaderView* hh = ui->table_watcher_signals->horizontalHeader();
+    for (unsigned col = 0; col < 3; ++col) hh->setSectionResizeMode(col, QHeaderView::ResizeToContents);
+    hh->setStretchLastSection(true);
 }
