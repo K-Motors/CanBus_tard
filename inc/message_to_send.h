@@ -33,6 +33,18 @@ class MessageToSend
             .arg(key == '\0' ? "No bind" : "'" + QString(key) + "'");
     }
 
+    QVariantMap valuestoVariantMap()
+    {
+        QVariantMap map;
+
+        for (QString& key : values.keys())
+        {
+            map.insert(key, values[key].value);
+        }
+
+        return map;
+    }
+
     QString                           messageName;
     unsigned                          messageId;
     QString                           unit;
