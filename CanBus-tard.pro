@@ -47,4 +47,5 @@ win32: RC_ICONS = icons.ico
 
 DISTFILES += \
     .clang-format \
-    .gitignore
+    .gitignore \
+    README.md
