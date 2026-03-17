@@ -130,6 +130,32 @@ QCanMessageDescription CanDevice::getMessageDescription(unsigned id)
         return QCanMessageDescription();
 }
 
+bool CanDevice::sendFrame(quint32 id, const QVariantMap& signalsValues, QString* error)
+{
+    error->clear();
+    if (canDevice == nullptr)
+    {
+        *error = "No device connected";
+        return false;
+    }
+
+    QCanBusFrame frame = frameProcessor.prepareFrame((QtCanBus::UniqueId)id, signalsValues);
+
+    if (frame.error() != QCanBusFrame::NoError)
+    {
+        *error = QString("Frame error. Reason: %1 -- %2").arg((unsigned)frame.error()).arg(frameProcessor.errorString());
+        return false;
+    }
+
+    if (canDevice->writeFrame(frame) == false)
+    {
+        *error = QString("Failed to send CAN frame. Reason: %1 -- %2").arg((unsigned)canDevice->error()).arg(canDevice->errorString());
+        return false;
+    }
+
+    return true;
+}
+
 void CanDevice::run()
 {
     forever

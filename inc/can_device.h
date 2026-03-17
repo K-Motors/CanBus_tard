@@ -26,6 +26,8 @@ class CanDevice : public QThread
     QCanMessageDescription getMessageDescription(unsigned id);
     QList<QCanMessageDescription> getMessageDescriptions() { return frameProcessor.messageDescriptions(); }
 
+    bool sendFrame(quint32 id, const QVariantMap& signalsValues, QString* error);
+
   signals:
     void canUnknownFrameReceived(QCanBusFrame frame);
     void canFrameReceived(QCanBusFrame frame, QVariantMap signalValues);
