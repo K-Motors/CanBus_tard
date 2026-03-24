@@ -1,11 +1,16 @@
 #include "dock_send_message.h"
 
+#include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include "const.h"
 
 constexpr int EDITABLE_COL = 1;
 
-DockSendMessage::DockSendMessage(CanDevice& CanDevice, QWidget* parent) : QWidget{parent}, ui{nullptr}, canDevice{CanDevice}, selectedIndex{-1}
+DockSendMessage::DockSendMessage(CanDevice& CanDevice, QSettings* settings, QWidget* parent)
+    : QWidget{parent}, ui{nullptr}, canDevice{CanDevice}, settings{settings}, selectedIndex{-1}
 {
 }
 
@@ -19,12 +24,13 @@ void DockSendMessage::init(Ui::MainWindow* ui)
 
     initListMessages();
     initTableSignals();
+    loadMessages();
 
     connect(ui->button_send_add, &QPushButton::clicked, this, [this]() { addMessage(); });
     connect(ui->button_send_duplicate, &QPushButton::clicked, this, [this]() { duplicateSelected(); });
     connect(ui->button_send_remove, &QPushButton::clicked, this, [this]() { removeSelected(); });
-    connect(ui->button_send_save, &QPushButton::clicked, this, [this]() { saveMessages(); });
-    connect(ui->button_send_load, &QPushButton::clicked, this, [this]() { loadMessages(); });
+    connect(ui->button_send_save, &QPushButton::clicked, this, [this]() { saveMessagesToFile(); });
+    connect(ui->button_send_load, &QPushButton::clicked, this, [this]() { loadMessagesToFile(); });
     connect(ui->button_send_message, &QPushButton::clicked, this, [this]() { sendMessage(); });
 
     connect(ui->list_send_message, &QListWidget::itemClicked, this, &DockSendMessage::onListItemSelected);
@@ -170,6 +176,57 @@ void DockSendMessage::loadMessages()
     updateList();
 }
 
+void DockSendMessage::saveMessagesToFile()
+{
+    QString filePath = QFileDialog::getSaveFileName(this, "Save Messages", "messages.json", "Messages file (*.json *.JSON);;All files (*.*)");
+
+    if (filePath.isEmpty()) return;
+
+    QFile saveFile(filePath);
+
+    if (!saveFile.open(QIODeviceBase::WriteOnly | QIODeviceBase::Text))
+    {
+        QMessageBox::critical(this, "Failed open file", "Unable to open the file (" + filePath + ")");
+        return;
+    }
+
+    QJsonArray array;
+    for (auto& msg : messageToSend) array.append(msg.serialize());
+
+    QTextStream   out(&saveFile);
+    QJsonDocument doc(array);
+    out << doc.toJson(QJsonDocument::Compact);
+}
+
+void DockSendMessage::loadMessagesToFile()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Open messages", "", "Messages file (*.json *.JSON);;All files (*.*)");
+
+    if (filePath.isEmpty()) return;
+
+    QFile openFile(filePath);
+
+    if (!openFile.open(QIODeviceBase::ReadOnly | QIODeviceBase::Text))
+    {
+        QMessageBox::critical(this, "Failed open file", "Unable to open the file (" + filePath + ")");
+        return;
+    }
+
+    QTextStream in(&openFile);
+    QString     content = in.readAll();
+
+    QJsonArray jsonArray = QJsonDocument::fromJson(content.toUtf8()).array();
+
+    for (auto elem : jsonArray)
+    {
+        QJsonObject   obj = elem.toObject();
+        MessageToSend msg;
+        msg.loadFromJson(obj);
+        messageToSend.append(msg);
+    }
+
+    updateList();
+}
 void DockSendMessage::sendMessage()
 {
     if (ui == nullptr || selectedIndex < 0) return;
