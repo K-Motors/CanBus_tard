@@ -71,6 +71,7 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
 
     // === VIEW ACTIONS ===
     connect(ui->action_overwrite_mode, &QAction::triggered, this, [this]() { clearMessageTable(); });
+    connect(ui->action_view_clear, &QAction::triggered, this, [this]() { clearMessageTable(); });
 
     // === DEVICE CONNECTION ===
     connect(ui->button_refresh_device, &QPushButton::clicked, this, &MainWindow::refreshDeviceList);
@@ -90,6 +91,8 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
 
     //      ===== Status Bar section =====
     QLabel* statusLabel = new QLabel("Loading status...");
+    QLabel* loveLabel   = new QLabel(QString::fromUtf8("Made with \xe2\x99\xa5 by K-Motors"));
+    ui->statusBar->addPermanentWidget(loveLabel);
     ui->statusBar->addWidget(statusLabel);
     connect(&processStat,
             &ProcessStat::updateStat,
