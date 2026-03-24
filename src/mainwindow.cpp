@@ -46,7 +46,7 @@ QString rawToString(QByteArray data)
 
 MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), settings{settings}, processStat{1}, canDevice{}, dbcManager{settings, this}, filterManager(settings, this),
-      dockSignalWatcher{}, dockSendMessage{canDevice, this}, isConnected{false}, selectedId{-1}
+      dockSignalWatcher{}, dockSendMessage{canDevice, settings, this}, isConnected{false}, selectedId{-1}
 {
     ui->setupUi(this);
     restoreGeometry(settings->value(SETTINGS_KEY_WIN_GEOMETRY).toByteArray());

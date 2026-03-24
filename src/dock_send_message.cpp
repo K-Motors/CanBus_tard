@@ -101,6 +101,8 @@ void DockSendMessage::addMessage()
         messageToSend.append(MessageToSend(messages[chosen]));
         updateList();
     }
+
+    saveMessages();
 }
 
 void DockSendMessage::duplicateSelected()
@@ -113,6 +115,7 @@ void DockSendMessage::duplicateSelected()
 
     messageToSend.append(messageToSend[selectedIndex]);
     updateList();
+    saveMessages();
 }
 
 void DockSendMessage::removeSelected()
@@ -135,14 +138,36 @@ void DockSendMessage::removeSelected()
         selectedIndex = messageToSend.length() - 1;
     }
     updateList();
+    saveMessages();
 }
 
 void DockSendMessage::saveMessages()
 {
+    QStringList saveList;
+
+    for (auto& msg : messageToSend)
+    {
+        QJsonDocument doc(msg.serialize());
+        saveList.append(doc.toJson(QJsonDocument::Compact));
+    }
+
+    settings->setValue(SETTINGS_KEY_SEND_MSG, saveList);
 }
 
 void DockSendMessage::loadMessages()
 {
+    QStringList listMsg = settings->value(SETTINGS_KEY_SEND_MSG).toStringList();
+
+    for (auto& str : listMsg)
+    {
+        QJsonDocument doc = QJsonDocument::fromJson(str.toUtf8());
+
+        MessageToSend msg;
+        msg.loadFromJson(doc.object());
+        messageToSend.append(msg);
+    }
+
+    updateList();
 }
 
 void DockSendMessage::sendMessage()
@@ -209,6 +234,7 @@ void DockSendMessage::onSignalCellChanged(int row, int col)
     MessageToSend& msg        = messageToSend[selectedIndex];
 
     msg.values[signalName].value = ui->table_send_signals->item(row, col)->data(Qt::DisplayRole);
+    saveMessages();
 }
 
 void DockSendMessage::onRepeatCheckStateChanged(Qt::CheckState state)
@@ -218,6 +244,7 @@ void DockSendMessage::onRepeatCheckStateChanged(Qt::CheckState state)
     messageToSend[selectedIndex].repeatEvery = state == Qt::Checked ? ui->spin_send_every->value() : 0;
     ui->spin_send_every->setEnabled(state == Qt::Checked);
     updateList();
+    saveMessages();
 }
 
 void DockSendMessage::onSpinSendEveryValueChanged(int value)
@@ -226,6 +253,7 @@ void DockSendMessage::onSpinSendEveryValueChanged(int value)
 
     messageToSend[selectedIndex].repeatEvery = value;
     updateList();
+    saveMessages();
 }
 
 void DockSendMessage::onLineBindKeyChanged(const QString& value)
@@ -234,4 +262,5 @@ void DockSendMessage::onLineBindKeyChanged(const QString& value)
 
     messageToSend[selectedIndex].key = value.isEmpty() ? '\0' : value[0];
     updateList();
+    saveMessages();
 }

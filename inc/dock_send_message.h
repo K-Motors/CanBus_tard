@@ -5,13 +5,14 @@
 #include "message_to_send.h"
 
 #include <QStyledItemDelegate>
+#include <QSettings>
 
 class DockSendMessage : public QWidget
 {
     Q_OBJECT
 
   public:
-    DockSendMessage(CanDevice& canDevice, QWidget* parent);
+    DockSendMessage(CanDevice& canDevice, QSettings* settings, QWidget* parent);
     ~DockSendMessage();
 
     void init(Ui::MainWindow* ui);
@@ -19,6 +20,7 @@ class DockSendMessage : public QWidget
   private:
     Ui::MainWindow*      ui;
     CanDevice&           canDevice;
+    QSettings*           settings;
     QList<MessageToSend> messageToSend;
     int                  selectedIndex;
 
@@ -32,6 +34,8 @@ class DockSendMessage : public QWidget
     void removeSelected();
     void saveMessages();
     void loadMessages();
+    void saveMessagesToFile();
+    void loadMessagesToFile();
     void sendMessage();
 
     void onListItemSelected(QListWidgetItem* item);
