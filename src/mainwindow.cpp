@@ -58,18 +58,18 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     dockSignalWatcher.init(ui);
     dockSendMessage.init(ui);
 
-    // === FILE ACTIONS ===
-    connect(ui->action_save_filters_config, &QAction::triggered, this, [this]() { saveFilters(); });
-    connect(ui->action_open_filters_config, &QAction::triggered, this, [this]() { openFilters(); });
-
-    // === DBC ACTIONS ===
+    // === SETUP ACTIONS ===
     connect(ui->actionManage_DBC_files, &QAction::triggered, this, [this]() { dbcManager.exec(); });
     connect(ui->actionForce_reload_DBC, &QAction::triggered, this, [this]() { loadDbcFiles(); });
     connect(&dbcManager, &QDialog::accepted, this, &MainWindow::loadDbcFiles);
     connect(&dbcManager, &QDialog::rejected, this, &MainWindow::loadDbcFiles);
 
-    // === MESSAGE ACTIONS ===
+    // === FILTER ACTIONS ===
     connect(ui->action_filter, &QAction::triggered, this, [this]() { filterManager.exec(); });
+    connect(ui->action_save_filters_config, &QAction::triggered, this, [this]() { saveFilters(); });
+    connect(ui->action_open_filters_config, &QAction::triggered, this, [this]() { openFilters(); });
+
+    // === VIEW ACTIONS ===
     connect(ui->action_overwrite_mode, &QAction::triggered, this, [this]() { clearMessageTable(); });
 
     // === DEVICE CONNECTION ===
@@ -294,7 +294,6 @@ void MainWindow::loadDbcFiles()
 
 void MainWindow::saveFilters()
 {
-
     QString filePath = QFileDialog::getSaveFileName(this, "Save filters", "filters.kflt", "Filters file (*.kflt *.KFLT);;All files (*.*)");
 
     if (filePath.isEmpty()) return;
