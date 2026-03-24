@@ -12,15 +12,13 @@ constexpr unsigned NUMBER_TABLE_ROW = 6;
 constexpr unsigned USERDATA_ROW     = 0;
 constexpr unsigned ID_ROW           = 2;
 
-QString rawToAscii(quint64 raw)
+QString rawToAscii(QByteArray data)
 {
     QString result;
 
     for (int i = 0; i < 8; ++i)
     {
-        quint64 mask = 0xFF00000000000000 >> (i * 8);
-        quint8  val  = (raw & mask) >> ((7 - i) * 8);
-        QChar   c(val);
+        QChar c((quint8)data[i]);
 
         if (c.isPrint())
             result += c;
@@ -31,31 +29,16 @@ QString rawToAscii(quint64 raw)
     return result;
 }
 
-QString rawToString(quint64 raw)
+QString rawToString(QByteArray data)
 {
     QString result;
 
     for (int i = 0; i < 8; ++i)
     {
-        quint64 mask = 0xFF00000000000000 >> (i * 8);
-        quint8  val  = (raw & mask) >> ((7 - i) * 8);
-
-        result += QString::number(val, 16).toUpper() + " ";
+        result += QString::number((quint8)data[i], 16).toUpper() + " ";
     }
 
-    return result;
-}
-
-quint64 payloadTo64bits(QByteArray data)
-{
-    quint64 value = 0;
-
-    for (int i = 0; i < 8; ++i)
-    {
-        value = data[i] << (i * 8);
-    }
-
-    return value;
+    return result.removeLast();
 }
 
 MainWindow::MainWindow(QSettings* settings, QWidget* parent)
@@ -120,7 +103,7 @@ void MainWindow::canUnknownFrameReceived(QCanBusFrame frame)
 {
     if (false == ui->action_enable_filters->isChecked() || (ui->action_enable_filters->isChecked() && filterManager.isMessageAccept(frame.frameId())))
     {
-        quint64           rawData                 = payloadTo64bits(frame.payload());
+        QByteArray        rawData                 = frame.payload();
         quint32           id                      = (quint32)frame.frameId();
         QTableWidgetItem* items[NUMBER_TABLE_ROW] = {new QTableWidgetItem(QTime::currentTime().toString("HH:mm:ss.zzz")),
                                                      new QTableWidgetItem("---"),
@@ -143,7 +126,7 @@ void MainWindow::canFrameReceived(QCanBusFrame frame, QVariantMap signalsValues)
             dockSignalWatcher.setMessageSignals(canDevice.getMessageDescription((unsigned)frame.frameId()), signalsValues);
         }
 
-        quint64           rawData                 = payloadTo64bits(frame.payload());
+        QByteArray        rawData                 = frame.payload();
         quint32           id                      = (quint32)frame.frameId();
         QTableWidgetItem* items[NUMBER_TABLE_ROW] = {new QTableWidgetItem(QTime::currentTime().toString("HH:mm:ss.zzz")),
                                                      new QTableWidgetItem(canDevice.getMessageDescription((unsigned)frame.frameId()).name()),
