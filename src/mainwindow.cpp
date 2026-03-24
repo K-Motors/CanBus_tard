@@ -5,12 +5,15 @@
 #include <QMessageBox>
 #include <QTime>
 #include <QLabel>
+#include <QFontDatabase>
 
 #include "const.h"
 
 constexpr unsigned NUMBER_TABLE_ROW = 6;
 constexpr unsigned USERDATA_ROW     = 0;
 constexpr unsigned ID_ROW           = 2;
+
+static QFont monoFont;
 
 QString rawToAscii(QByteArray data)
 {
@@ -48,6 +51,9 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     ui->setupUi(this);
     restoreGeometry(settings->value(SETTINGS_KEY_WIN_GEOMETRY).toByteArray());
     restoreState(settings->value(SETTINGS_KEY_WIN_STATE).toByteArray());
+
+    monoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    monoFont.setPointSize(10);
 
     dockSignalWatcher.init(ui);
     dockSendMessage.init(ui);
@@ -177,7 +183,7 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
 {
     int row = ui->table_can_messages->rowCount();
 
-    QFont font = items[0]->font();
+    QFont font = monoFont;
     font.setItalic(isItalic);
 
     if (ui->action_overwrite_mode->isChecked())
