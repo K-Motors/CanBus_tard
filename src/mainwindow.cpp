@@ -38,6 +38,8 @@ QString rawToString(QByteArray data)
 
     for (int i = 0; i < 8; ++i)
     {
+        if ((quint8)data[i] < 16) result += "0";
+
         result += QString::number((quint8)data[i], 16).toUpper() + " ";
     }
 
