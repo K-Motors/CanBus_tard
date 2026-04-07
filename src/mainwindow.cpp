@@ -51,6 +51,7 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
       dockSignalWatcher{}, dockSendMessage{canDevice, settings, this}, isConnected{false}, selectedId{-1}
 {
     ui->setupUi(this);
+    setWindowIcon(QIcon(":/img/logo.png"));
     restoreGeometry(settings->value(SETTINGS_KEY_WIN_GEOMETRY).toByteArray());
     restoreState(settings->value(SETTINGS_KEY_WIN_STATE).toByteArray());
 

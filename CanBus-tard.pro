@@ -50,3 +50,6 @@ DISTFILES += \
     .clang-format \
     .gitignore \
     README.md
+
+RESOURCES += \
+    res/res.qrc
