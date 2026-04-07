@@ -1,12 +1,12 @@
 #pragma once
 
-#include <QObject>
 #include <QStringList>
 #include <QThread>
 
 #include <QCanBusDevice>
 #include <QCanFrameProcessor>
 #include <QCanMessageDescription>
+#include <QCanSignalDescription>
 #include <QMap>
 
 class CanDevice : public QThread

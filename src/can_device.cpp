@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QCanMessageDescription>
+#include "dbc_parser.h"
 
 CanDevice::CanDevice() : QThread{nullptr}, canDevice{nullptr}, frameProcessor{}
 {
@@ -58,7 +59,7 @@ QList<QCanBusDeviceInfo> CanDevice::listAvailableDevices(QString* errorString)
 void CanDevice::loadDbcFiles(QStringList& dbcFiles)
 {
     QList<QString>                failed_file;
-    QCanDbcFileParser             parser;
+    DbcParser                     parser;
     QList<QCanMessageDescription> messages_descr;
 
     frameProcessor.clearMessageDescriptions();
@@ -89,8 +90,13 @@ void CanDevice::loadDbcFiles(QStringList& dbcFiles)
             failed_file.push_back(path);
         }
         else
-        {
+        {   
             qInfo() << "\t" << path.toStdString() << "DBC loaded succesfuly";
+
+            for (auto& warn : parser.warnings())
+            {
+                qInfo() << "\t\tWarning: " << warn;
+            }
 
             for (const auto& newMsg : parser.messageDescriptions())
             {
@@ -146,6 +152,8 @@ bool CanDevice::sendFrame(quint32 id, const QVariantMap& signalsValues, QString*
         *error = QString("Frame error. Reason: %1 -- %2").arg((unsigned)frame.error()).arg(frameProcessor.errorString());
         return false;
     }
+
+    if (id & 0x80000000) frame.setExtendedFrameFormat(true);
 
     if (canDevice->writeFrame(frame) == false)
     {

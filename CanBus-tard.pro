@@ -22,6 +22,7 @@ SOURCES += \
     src/mainwindow.cpp
 
 HEADERS += \
+    inc/dbc_parser.h \
     inc/process_stat.h \
     inc/const.h \
     inc/dock_send_message.h \
