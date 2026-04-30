@@ -14,6 +14,7 @@ constexpr unsigned USERDATA_ROW     = 0;
 constexpr unsigned ID_ROW           = 2;
 
 static QFont monoFont;
+static QFont monoFontItalic;
 
 QString rawToAscii(QByteArray data)
 {
@@ -57,6 +58,10 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
 
     monoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     monoFont.setPointSize(10);
+
+    monoFontItalic = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    monoFontItalic.setPointSize(10);
+    monoFontItalic.setItalic(true);
 
     dockSignalWatcher.init(ui);
     dockSendMessage.init(ui);
@@ -189,9 +194,6 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
 {
     int row = ui->table_can_messages->rowCount();
 
-    QFont font = monoFont;
-    font.setItalic(isItalic);
-
     if (ui->action_overwrite_mode->isChecked())
     {
         if (mapIdLine.contains(id))
@@ -213,8 +215,8 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
 
     for (unsigned i = 0; i < NUMBER_TABLE_ROW; i++)
     {
-        ui->table_can_messages->setFont(font);
         ui->table_can_messages->setItem(row, i, items[i]);
+        ui->table_can_messages->item(row, i)->setFont(isItalic ? monoFontItalic : monoFont);
     }
 }
 
