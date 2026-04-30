@@ -36,7 +36,7 @@ class CanDevice : public QThread
     void run() override;
 
   private:
-    QCanBusDevice*     canDevice;
-    QCanFrameProcessor frameProcessor;
+    QCanBusDevice*                         canDevice;
+    QCanFrameProcessor                     frameProcessor;
     QMap<unsigned, QCanMessageDescription> mapMsgDescription;
 };
