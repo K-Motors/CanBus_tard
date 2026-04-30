@@ -42,6 +42,21 @@ void DockSendMessage::init(Ui::MainWindow* ui)
     connect(ui->table_send_signals, &QTableWidget::cellChanged, this, &DockSendMessage::onSignalCellChanged);
 }
 
+void DockSendMessage::sendMessageWithKey(QChar c)
+{
+    for (auto& msg : messageToSend)
+    {
+        if (msg.key != '\0' && msg.key == c)
+        {
+            QString error;
+            if (false == canDevice.sendFrame(msg.messageId, msg.valuestoVariantMap(), &error))
+            {
+                qWarning() << error;
+            }
+        }
+    }
+}
+
 void DockSendMessage::initListMessages()
 {
     if (ui == nullptr) return;
@@ -270,6 +285,11 @@ void DockSendMessage::onListItemSelected(QListWidgetItem* item)
         ui->check_send_every->setChecked(false);
         ui->spin_send_every->setValue(20);
     }
+
+    if (msg.key == '\x0' || msg.key == '\0')
+        ui->line_send_bindkey->setText("");
+    else
+        ui->line_send_bindkey->setText(msg.key);
 }
 
 void DockSendMessage::onSignalCellClicked(int row, int col)
@@ -352,7 +372,7 @@ void DockSendMessage::onLineBindKeyChanged(const QString& value)
 {
     if (selectedIndex < 0) return;
 
-    messageToSend[selectedIndex].key = value.isEmpty() ? '\0' : value[0];
+    messageToSend[selectedIndex].key = value.isEmpty() ? '\0' : value[0].toLower();
     updateList();
     saveMessages();
 }

@@ -357,7 +357,7 @@
              <item>
               <widget class="QLineEdit" name="line_send_bindkey">
                <property name="enabled">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">

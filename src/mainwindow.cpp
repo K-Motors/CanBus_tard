@@ -5,6 +5,8 @@
 #include <QMessageBox>
 #include <QTime>
 #include <QLabel>
+#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QFontDatabase>
 
 #include <QMap>
@@ -142,6 +144,8 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     QTimer* uiRefreshTimer = new QTimer(this);
     connect(uiRefreshTimer, &QTimer::timeout, this, &MainWindow::refreshTable);
     uiRefreshTimer->start(33); // ~30fps
+
+    qApp->installEventFilter(this);
 }
 
 MainWindow::~MainWindow()
@@ -198,6 +202,27 @@ void MainWindow::closeEvent(QCloseEvent* event)
     settings->setValue(SETTINGS_KEY_WIN_STATE, saveState());
     settings->setValue(SETTINGS_KEY_WIN_GEOMETRY, saveGeometry());
     QMainWindow::closeEvent(event);
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() >= Qt::Key_A && keyEvent->key() <= Qt::Key_Z)
+        {
+            QWidget* focused = qApp->focusWidget();
+            if (nullptr == qobject_cast<QLineEdit*>(focused) && nullptr == qobject_cast<QTextEdit*>(focused) &&
+                nullptr == qobject_cast<QPlainTextEdit*>(focused))
+            {
+                QChar key = QChar(keyEvent->key()).toLower();
+                qDebug().nospace() << "'" << key << "' pressed";
+                dockSendMessage.sendMessageWithKey(key);
+                return true;
+            }
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::initMessageTable()

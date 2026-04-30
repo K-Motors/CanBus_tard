@@ -16,6 +16,7 @@ class DockSendMessage : public QWidget
     ~DockSendMessage();
 
     void init(Ui::MainWindow* ui);
+    void sendMessageWithKey(QChar c);
 
   private:
     Ui::MainWindow*      ui;
