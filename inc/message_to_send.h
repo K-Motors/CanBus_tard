@@ -15,7 +15,7 @@ struct MessageToSendValue
 class MessageToSend
 {
   public:
-    MessageToSend() : messageName{""}, messageId{0}, values{}, repeatEvery{0}, key('\0') {}
+    MessageToSend() : messageName{""}, messageId{0}, values{}, repeatEvery{0}, key('\0'), uuidCanDevice{0} {}
     MessageToSend(QCanMessageDescription& msgDescr) : messageName{""}, messageId{0}, values{}, repeatEvery{0}, key('\0')
     {
         messageName = msgDescr.name();
@@ -94,4 +94,5 @@ class MessageToSend
     QMap<QString, MessageToSendValue> values;
     unsigned                          repeatEvery;
     QChar                             key;
+    quint32                           uuidCanDevice;
 };

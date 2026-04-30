@@ -9,6 +9,16 @@
 #include <QCanSignalDescription>
 #include <QMap>
 
+#include <QMutex>
+#include <QQueue>
+
+struct PeriodicFrame
+{
+    QCanBusFrame frame;
+    quint32      everyMs;
+    quint32      lastMs;
+};
+
 class CanDevice : public QThread
 {
 
@@ -27,6 +37,8 @@ class CanDevice : public QThread
     QList<QCanMessageDescription> getMessageDescriptions() { return frameProcessor.messageDescriptions(); }
 
     bool sendFrame(quint32 id, const QVariantMap& signalsValues, QString* error);
+    quint32 addPeriodicFrame(quint32 id, const QVariantMap& signalsValues, quint32 everyMs);
+    void    removePeriodicFrame(quint32 uuid);
 
   signals:
     void canUnknownFrameReceived(QCanBusFrame frame);
@@ -39,4 +51,10 @@ class CanDevice : public QThread
     QCanBusDevice*                         canDevice;
     QCanFrameProcessor                     frameProcessor;
     QMap<unsigned, QCanMessageDescription> mapMsgDescription;
+
+    quint32                      nextUUID;
+    QMutex                       oneShotFrameMutex;
+    QMutex                       periodicFrameMutex;
+    QMap<quint32, PeriodicFrame> periodicFrameMap;
+    QQueue<QCanBusFrame>         oneShotFrameToSend;
 };

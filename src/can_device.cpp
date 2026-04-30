@@ -6,9 +6,11 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QCanMessageDescription>
+#include <QElapsedTimer>
+
 #include "dbc_parser.h"
 
-CanDevice::CanDevice() : QThread{nullptr}, canDevice{nullptr}, frameProcessor{}
+CanDevice::CanDevice() : QThread{nullptr}, canDevice{nullptr}, frameProcessor{}, nextUUID{1}
 {
 
     moveToThread(this);
@@ -49,6 +51,7 @@ void CanDevice::disconnect()
     }
 
     canDevice->disconnectDevice();
+    canDevice = nullptr;
 }
 
 QList<QCanBusDeviceInfo> CanDevice::listAvailableDevices(QString* errorString)
@@ -155,30 +158,83 @@ bool CanDevice::sendFrame(quint32 id, const QVariantMap& signalsValues, QString*
 
     if (id & 0x80000000) frame.setExtendedFrameFormat(true);
 
-    if (canDevice->writeFrame(frame) == false)
+    QMutexLocker locker(&oneShotFrameMutex);
+    oneShotFrameToSend.enqueue(frame);
+    return true;
+}
+
+quint32 CanDevice::addPeriodicFrame(quint32 id, const QVariantMap& signalsValues, quint32 everyMs)
+{
+    if (nextUUID == 0)
     {
-        *error = QString("Failed to send CAN frame. Reason: %1 -- %2").arg((unsigned)canDevice->error()).arg(canDevice->errorString());
-        return false;
+        qWarning() << "UUID for periodic frame had overflow !";
+        return 0;
     }
 
-    return true;
+    QCanBusFrame frame = frameProcessor.prepareFrame((QtCanBus::UniqueId)id, signalsValues);
+    if (frame.error() != QCanBusFrame::NoError)
+    {
+        qDebug() << "Frame error. Reason:" << (unsigned)frame.error() << "--" << frameProcessor.errorString();
+        return 0;
+    }
+
+    QMutexLocker locker(&periodicFrameMutex);
+    periodicFrameMap.insert(nextUUID, PeriodicFrame{.frame = frame, .everyMs = everyMs, .lastMs = 0});
+
+    return nextUUID++;
+}
+
+void CanDevice::removePeriodicFrame(quint32 uuid)
+{
+    QMutexLocker locker(&periodicFrameMutex);
+    periodicFrameMap.remove(uuid);
 }
 
 void CanDevice::run()
 {
+    QElapsedTimer elapse;
+    elapse.start();
+
     forever
     {
-        while (canDevice != nullptr && canDevice->framesAvailable() > 0)
+        if (canDevice != nullptr && canDevice->state() == QCanBusDevice::ConnectedState)
         {
-            QCanBusFrame                    frame  = canDevice->readFrame();
-            QCanFrameProcessor::ParseResult result = frameProcessor.parseFrame(frame);
+            oneShotFrameMutex.lock();
+            while (false == oneShotFrameToSend.empty())
+            {
+                if (false == canDevice->writeFrame(oneShotFrameToSend.dequeue()))
+                {
+                    qWarning() << "Failed to send CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                }
+            }
+            oneShotFrameMutex.unlock();
 
-            if (result.signalValues.empty())
-                emit canUnknownFrameReceived(frame);
-            else
-                emit canFrameReceived(frame, result.signalValues);
+            periodicFrameMutex.lock();
+            for (auto& frame : periodicFrameMap)
+            {
+                if (elapse.elapsed() - frame.lastMs >= frame.everyMs)
+                {
+                    if (false == canDevice->writeFrame(frame.frame))
+                    {
+                        qWarning() << "Failed to send (periodic) CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                    }
+                    frame.lastMs = elapse.elapsed();
+                }
+            }
+            periodicFrameMutex.unlock();
+
+            while (canDevice->framesAvailable() > 0)
+            {
+                QCanBusFrame                    frame  = canDevice->readFrame();
+                QCanFrameProcessor::ParseResult result = frameProcessor.parseFrame(frame);
+
+                if (result.signalValues.empty())
+                    emit canUnknownFrameReceived(frame);
+                else
+                    emit canFrameReceived(frame, result.signalValues);
+            }
         }
 
-        QThread::msleep(1);
+        QThread::usleep(250);
     }
 }

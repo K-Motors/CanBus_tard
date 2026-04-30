@@ -292,25 +292,60 @@ void DockSendMessage::onSignalCellChanged(int row, int col)
 
     msg.values[signalName].value = ui->table_send_signals->item(row, col)->data(Qt::DisplayRole);
     saveMessages();
+
+    if (msg.uuidCanDevice != 0)
+    {
+        canDevice.removePeriodicFrame(msg.uuidCanDevice);
+        msg.uuidCanDevice = 0;
+    }
+
+    if (msg.repeatEvery > 0)
+    {
+        msg.uuidCanDevice = canDevice.addPeriodicFrame(msg.messageId, msg.valuestoVariantMap(), msg.repeatEvery);
+    }
 }
 
 void DockSendMessage::onRepeatCheckStateChanged(Qt::CheckState state)
 {
     if (selectedIndex < 0) return;
 
-    messageToSend[selectedIndex].repeatEvery = state == Qt::Checked ? ui->spin_send_every->value() : 0;
+    MessageToSend& msg = messageToSend[selectedIndex];
+    msg.repeatEvery    = state == Qt::Checked ? ui->spin_send_every->value() : 0;
     ui->spin_send_every->setEnabled(state == Qt::Checked);
     updateList();
     saveMessages();
+
+    if (msg.uuidCanDevice != 0)
+    {
+        canDevice.removePeriodicFrame(msg.uuidCanDevice);
+        msg.uuidCanDevice = 0;
+    }
+
+    if (state == Qt::Checked && msg.repeatEvery > 0)
+    {
+        msg.uuidCanDevice = canDevice.addPeriodicFrame(msg.messageId, msg.valuestoVariantMap(), msg.repeatEvery);
+    }
 }
 
 void DockSendMessage::onSpinSendEveryValueChanged(int value)
 {
     if (selectedIndex < 0 || false == ui->check_send_every->isChecked()) return;
 
-    messageToSend[selectedIndex].repeatEvery = value;
+    MessageToSend& msg = messageToSend[selectedIndex];
+    msg.repeatEvery    = value;
     updateList();
     saveMessages();
+
+    if (msg.uuidCanDevice != 0)
+    {
+        canDevice.removePeriodicFrame(msg.uuidCanDevice);
+        msg.uuidCanDevice = 0;
+    }
+
+    if (msg.repeatEvery > 0)
+    {
+        msg.uuidCanDevice = canDevice.addPeriodicFrame(msg.messageId, msg.valuestoVariantMap(), msg.repeatEvery);
+    }
 }
 
 void DockSendMessage::onLineBindKeyChanged(const QString& value)

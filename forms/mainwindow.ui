@@ -317,7 +317,7 @@
              <item>
               <widget class="QCheckBox" name="check_send_every">
                <property name="enabled">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
                <property name="text">
                 <string>Every</string>
@@ -475,5 +475,22 @@
   </action>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>check_send_every</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spin_send_every</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>979</x>
+     <y>664</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>1160</x>
+     <y>664</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
