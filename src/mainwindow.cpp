@@ -7,14 +7,33 @@
 #include <QLabel>
 #include <QFontDatabase>
 
+#include <QMap>
+#include <QQueue>
+#include <QTimer>
+
 #include "const.h"
 
 constexpr unsigned NUMBER_TABLE_ROW = 6;
 constexpr unsigned USERDATA_ROW     = 0;
 constexpr unsigned ID_ROW           = 2;
 
+constexpr unsigned ID_TIME_COL  = 0;
+constexpr unsigned ID_ASCII_COL = 4;
+constexpr unsigned ID_RAW_COL   = 5;
+
 static QFont monoFont;
 static QFont monoFontItalic;
+
+struct PendingFrame
+{
+    QCanBusFrame frame;
+    QVariantMap  signalsValues;
+    bool         isUnknown;
+    QTime        time;
+};
+
+static QMap<quint32, PendingFrame> pendingFramesMap;
+static QQueue<PendingFrame>        pendingFramesQueue;
 
 QString rawToAscii(QByteArray data)
 {
@@ -78,7 +97,17 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     connect(ui->action_open_filters_config, &QAction::triggered, this, [this]() { openFilters(); });
 
     // === VIEW ACTIONS ===
-    connect(ui->action_overwrite_mode, &QAction::triggered, this, [this]() { clearMessageTable(); });
+    connect(ui->action_overwrite_mode,
+            &QAction::triggered,
+            this,
+            [this](bool checked)
+            {
+                clearMessageTable();
+                if (checked)
+                    pendingFramesQueue.clear();
+                else
+                    pendingFramesMap.clear();
+            });
     connect(ui->action_view_clear, &QAction::triggered, this, [this]() { clearMessageTable(); });
 
     // === DEVICE CONNECTION ===
@@ -109,6 +138,10 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
                 statusLabel->setText(
                     QString("PID: %1    CPU: %2 %    MEM: %3 MB").arg(QCoreApplication::applicationPid()).arg(cpu, 0, 'f', 1).arg(mem / 1024 / 1024));
             });
+
+    QTimer* uiRefreshTimer = new QTimer(this);
+    connect(uiRefreshTimer, &QTimer::timeout, this, &MainWindow::refreshTable);
+    uiRefreshTimer->start(33); // ~30fps
 }
 
 MainWindow::~MainWindow()
@@ -118,19 +151,23 @@ MainWindow::~MainWindow()
 
 void MainWindow::canUnknownFrameReceived(QCanBusFrame frame)
 {
+
     if (false == ui->action_enable_filters->isChecked() || (ui->action_enable_filters->isChecked() && filterManager.isMessageAccept(frame.frameId())))
     {
-        QByteArray        rawData                 = frame.payload();
-        quint32           id                      = (quint32)frame.frameId();
-        QTableWidgetItem* items[NUMBER_TABLE_ROW] = {new QTableWidgetItem(QTime::currentTime().toString("HH:mm:ss.zzz")),
-                                                     new QTableWidgetItem("---"),
-                                                     new QTableWidgetItem(QString::number(id, 16)),
-                                                     new QTableWidgetItem(frame.hasExtendedFrameFormat() ? "EXT" : "STD"),
-                                                     new QTableWidgetItem(rawToAscii(rawData)),
-                                                     new QTableWidgetItem(rawToString(rawData))};
+        PendingFrame pending;
 
-        items[ID_ROW]->setData(Qt::UserRole, id);
-        addMessageLine(id, items, true);
+        pending.isUnknown = true;
+        pending.frame     = frame;
+        pending.time      = QTime::currentTime();
+
+        if (ui->action_overwrite_mode->isChecked())
+        {
+            pendingFramesMap.insert((quint32)frame.frameId(), pending);
+        }
+        else
+        {
+            pendingFramesQueue.enqueue(pending);
+        }
     }
 }
 
@@ -138,23 +175,21 @@ void MainWindow::canFrameReceived(QCanBusFrame frame, QVariantMap signalsValues)
 {
     if (false == ui->action_enable_filters->isChecked() || (ui->action_enable_filters->isChecked() && filterManager.isMessageAccept(frame.frameId())))
     {
-        if ((int)frame.frameId() == selectedId)
+        PendingFrame pending;
+
+        pending.isUnknown     = false;
+        pending.frame         = frame;
+        pending.signalsValues = signalsValues;
+        pending.time          = QTime::currentTime();
+
+        if (ui->action_overwrite_mode->isChecked())
         {
-            dockSignalWatcher.setMessageSignals(canDevice.getMessageDescription((unsigned)frame.frameId()), signalsValues);
+            pendingFramesMap.insert((quint32)frame.frameId(), pending);
         }
-
-        QByteArray        rawData                 = frame.payload();
-        quint32           id                      = (quint32)frame.frameId();
-        QTableWidgetItem* items[NUMBER_TABLE_ROW] = {new QTableWidgetItem(QTime::currentTime().toString("HH:mm:ss.zzz")),
-                                                     new QTableWidgetItem(canDevice.getMessageDescription((unsigned)frame.frameId()).name()),
-                                                     new QTableWidgetItem(QString::number(id, 16)),
-                                                     new QTableWidgetItem(frame.hasExtendedFrameFormat() ? "EXT" : "STD"),
-                                                     new QTableWidgetItem(rawToAscii(rawData)),
-                                                     new QTableWidgetItem(rawToString(rawData))};
-
-        items[USERDATA_ROW]->setData(Qt::UserRole, signalsValues);
-        items[ID_ROW]->setData(Qt::UserRole, id);
-        addMessageLine(id, items, false);
+        else
+        {
+            pendingFramesQueue.enqueue(pending);
+        }
     }
 }
 
@@ -338,6 +373,59 @@ void MainWindow::openFilters()
 
     while (!in.atEnd()) lines << in.readLine();
     filterManager.loadFromStrings(lines);
+}
+
+void MainWindow::refreshTable()
+{
+    while (true)
+    {
+        PendingFrame pending;
+
+        if (ui->action_overwrite_mode->isChecked())
+        {
+            if (pendingFramesMap.isEmpty()) return;
+
+            pending = pendingFramesMap.take(pendingFramesMap.firstKey());
+        }
+        else
+        {
+            if (pendingFramesQueue.empty()) return;
+            pending = pendingFramesQueue.dequeue();
+        }
+
+        quint32    id      = (quint32)pending.frame.frameId();
+        QByteArray rawData = pending.frame.payload();
+
+        if (ui->action_overwrite_mode->isChecked() && mapIdLine.contains(id))
+        {
+            int row = mapIdLine[id];
+
+            ui->table_can_messages->item(row, ID_TIME_COL)->setText(pending.time.toString("HH:mm:ss.zzz"));
+            ui->table_can_messages->item(row, ID_ASCII_COL)->setText(rawToAscii(rawData));
+            ui->table_can_messages->item(row, ID_RAW_COL)->setText(rawToString(rawData));
+
+            if (!pending.isUnknown)
+            {
+                ui->table_can_messages->item(row, USERDATA_ROW)->setData(Qt::UserRole, pending.signalsValues);
+                if ((int)pending.frame.frameId() == selectedId)
+                {
+                    dockSignalWatcher.setMessageSignals(canDevice.getMessageDescription(id), pending.signalsValues);
+                }
+            }
+        }
+        else
+        {
+            QTableWidgetItem* items[NUMBER_TABLE_ROW] = {new QTableWidgetItem(pending.time.toString("HH:mm:ss.zzz")),
+                                                         new QTableWidgetItem(pending.isUnknown ? "---" : canDevice.getMessageDescription(id).name()),
+                                                         new QTableWidgetItem(QString::number(id, 16)),
+                                                         new QTableWidgetItem(pending.frame.hasExtendedFrameFormat() ? "EXT" : "STD"),
+                                                         new QTableWidgetItem(rawToAscii(rawData)),
+                                                         new QTableWidgetItem(rawToString(rawData))};
+            items[ID_ROW]->setData(Qt::UserRole, id);
+            if (!pending.isUnknown) items[USERDATA_ROW]->setData(Qt::UserRole, pending.signalsValues);
+            addMessageLine(id, items, pending.isUnknown);
+        }
+    }
 }
 
 int MainWindow::computeTextSize(const QString& text)

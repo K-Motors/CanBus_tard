@@ -60,5 +60,7 @@ class MainWindow : public QMainWindow
     void saveFilters();
     void openFilters();
 
+    void refreshTable();
+
     int computeTextSize(const QString& text);
 };
