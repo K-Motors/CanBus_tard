@@ -86,7 +86,7 @@ class DbcParser
 
             if (match.hasMatch())
             {
-                quint32 id   = match.captured(1).toULongLong();
+                quint32 id   = match.captured(1).toULongLong() & 0x1FFFFFFF;
                 QString name = match.captured(2);
                 result.insert(name, id);
             }
