@@ -49,7 +49,8 @@ win32: RC_ICONS = icons.ico
 DISTFILES += \
     .clang-format \
     .gitignore \
-    README.md
+    README.md \
+    installer.iss
 
 RESOURCES += \
     res/res.qrc
