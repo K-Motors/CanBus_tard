@@ -49,6 +49,7 @@ win32: RC_ICONS = icon.ico
 DISTFILES += \
     .clang-format \
     .gitignore \
+    CanBus-tard.desktop \
     README.md \
     installer.iss
 
