@@ -1,0 +1,204 @@
+name: Releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+        - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: [self-hosted, Windows, X64, Qt]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build
+        shell: cmd
+        run: |
+          call "C:\Qt\6.11.0\mingw_64\bin\qtenv2.bat"
+          cd %GITHUB_WORKSPACE%
+          qmake "CanBus-tard.pro" CONFIG+=release
+          mingw32-make -j4
+
+      - name: Deploy
+        shell: cmd
+        run: |
+          call "C:\Qt\6.11.0\mingw_64\bin\qtenv2.bat"
+          cd %GITHUB_WORKSPACE%
+          mkdir deploy
+          copy "release\CanBus-tard.exe" deploy\
+          windeployqt "deploy\CanBus-tard.exe"
+
+      - name: Create Installer
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer\CanBus-tard-Setup.exe
+
+  build-linux:
+    runs-on: [self-hosted, Linux, X64, Qt]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build
+        run: |
+          export PATH=/opt/Qt/6.11.0/gcc_64/bin:$PATH
+          export LD_LIBRARY_PATH=/opt/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH
+          qmake CanBus-tard.pro CONFIG+=release
+          make -j4
+
+      - name: Deploy AppImage
+        run: |
+          export PATH=/opt/Qt/6.11.0/gcc_64/bin:$PATH
+          export LD_LIBRARY_PATH=/opt/Qt/6.11.0/gcc_64/lib:$LD_LIBRARY_PATH
+
+          # Download linux deploy & Qt Plugin
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
+
+          # Copy canbus plugins
+          mkdir -p AppDir/usr/plugins/canbus
+          cp /opt/Qt/6.11.0/gcc_64/plugins/canbus/*.so AppDir/usr/plugins/canbus/
+
+
+          # Create AppImage
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable CanBus-tard \
+            --desktop-file CanBus-tard.desktop \
+            --icon-file icon.png \
+            --plugin qt \
+            --output appimage
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: CanBus-tard-*.AppImage
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: appimage/
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: Helmisek/conventional-changelog-generator@v1.0.6-release
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          template-path: ".github/CHANGELOG.tpl.md"
+          commit-types: "feat:Features 🎉,fix:Bug Fixes 🐛,chore:Chores 🧹,docs:Documentation 📖,perf:Performance ⏱,test:Test 🛠,revert:Revert,ci:CI 📦,refactor:Refactor ♻️"
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          makeLatest: true
+          draft: false
+          body: ${{ steps.changelog.outputs.changelog }}
+          artifacts: |
+            installer/CanBus-tard-Setup.exe
+            appimage/CanBus-tard-*.AppImage
+
+# build:
+  #   runs-on: windows-latest
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
+
+  #   - name: Install Qt
+  #     uses: jurplel/install-qt-action@v4
+  #     with:
+  #       version: '6.10.2'
+  #       target: 'desktop'
+  #       arch: 'win64_mingw'
+  #       modules: 'qtserialbus qtserialport'
+  #       tools: 'tools_mingw1310'
+
+  #   - name: Versions Qt and g++
+  #     run: |
+  #       qmake --version
+  #       g++ --version
+
+  #   - name: Build with qmake
+  #     shell: cmd
+  #     run: |
+  #       echo Run QMake
+  #       qmake Pack_simulator.pro
+  #       echo Run Mingw Make QMakeAll
+  #       mingw32-make.exe qmake_all
+  #       echo Run Mingw Make
+  #       mingw32-make.exe
+
+  #   - name: Run windeployqt
+  #     shell: cmd
+  #     run: |
+  #       windeployqt.exe --release release\Pack_simulator.exe --dir release\deploy
+  #       COPY release\Pack_simulator.exe release\deploy\Pack_simulator.exe
+  #       COPY lib\qcustomplot2.dll release\deploy\qcustomplot2.dll
+  #       COPY %QT_ROOT_DIR%\bin\Qt6PrintSupport.dll release\deploy\Qt6PrintSupport.dll
+
+  #   - name: Create zip package
+  #     run: |
+  #       $tag = "${{ github.ref_name }}"
+  #       powershell Compress-Archive -Path release\deploy\* -DestinationPath "Pack_simulator_Windows_$tag.zip"
+
+  #   - name: Upload artifact
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: Pack_simulator_${{ github.ref_name }}
+  #       path: Pack_simulator_Windows_${{ github.ref_name }}.zip
+
+  # release:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
+
+  #   - name: Download artifact
+  #     uses: actions/download-artifact@v5
+  #     with:
+  #       name: Pack_simulator_${{ github.ref_name }}
+
+  #   - name: Conventional Changelog Action
+  #     id: changelog
+  #     uses: Helmisek/conventional-changelog-generator@v1.0.6-release
+  #     with:
+  #       repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #       template-path: ".github/CHANGELOG.tpl.md"
+  #       commit-types: "feat:Features 🎉,fix:Bug Fixes 🐛,chore:Chores 🧹,docs:Documentation 📖,perf:Performance ⏱,test:Test 🛠,revert:Revert,ci:CI 📦,refactor:Refactor ♻️"
+
+
+  #   - name: Create Release
+  #     uses: ncipollo/release-action@v1
+  #     with:
+  #       makeLatest: true
+  #       draft: false
+  #       body: ${{ steps.changelog.outputs.changelog }}
+  #       artifacts: "Pack_simulator_Windows_${{ github.ref_name }}.zip"
