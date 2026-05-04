@@ -44,7 +44,7 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-win32: RC_ICONS = icons.ico
+win32: RC_ICONS = icon.ico
 
 DISTFILES += \
     .clang-format \
