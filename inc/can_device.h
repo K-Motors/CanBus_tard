@@ -12,11 +12,18 @@
 #include <QMutex>
 #include <QQueue>
 
+struct FrameData
+{
+    quint32     id;
+    QVariantMap values;
+};
+
 struct PeriodicFrame
 {
-    QCanBusFrame frame;
-    quint32      everyMs;
-    quint32      lastMs;
+    // QCanBusFrame frame;
+    FrameData frameData;
+    quint32   everyMs;
+    quint32   lastMs;
 };
 
 class CanDevice : public QThread
@@ -56,5 +63,7 @@ class CanDevice : public QThread
     QMutex                       oneShotFrameMutex;
     QMutex                       periodicFrameMutex;
     QMap<quint32, PeriodicFrame> periodicFrameMap;
-    QQueue<QCanBusFrame>         oneShotFrameToSend;
+    QQueue<FrameData>            oneShotFrameToSend;
+
+    QCanBusFrame createFrame(quint32 id, const QVariantMap& signalsValues, QString* error);
 };

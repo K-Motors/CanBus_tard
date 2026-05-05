@@ -1,5 +1,6 @@
 #include "can_device.h"
 
+#include <QApplication>
 #include <QCanDbcFileParser>
 #include <QCanUniqueIdDescription>
 #include <QCanBus>
@@ -12,7 +13,6 @@
 
 CanDevice::CanDevice() : QThread{nullptr}, canDevice{nullptr}, frameProcessor{}, nextUUID{1}
 {
-
     moveToThread(this);
     frameProcessor.setUniqueIdDescription(QCanDbcFileParser::uniqueIdDescription());
     start();
@@ -27,20 +27,23 @@ CanDevice::~CanDevice()
 
 bool CanDevice::connect(QString& plugin, QString& name, unsigned baudrate, QString* error)
 {
-    error->clear();
+    bool result = false;
 
-    canDevice = QCanBus::instance()->createDevice(plugin, name, error);
+    QMetaObject::invokeMethod(
+        this,
+        [this, &plugin, &name, error, &result]()
+        {
+            canDevice = QCanBus::instance()->createDevice(plugin, name, error);
+            if (canDevice == nullptr || !error->isEmpty())
+            {
+                result = false;
+                return;
+            }
+            result = canDevice->connectDevice();
+        },
+        Qt::BlockingQueuedConnection);
 
-    if (canDevice == nullptr || error->length() != 0)
-    {
-        return false;
-    }
-
-    // canDevice->setConfigurationParameter(QCanBusDevice::BitRateKey, baudrate);
-
-    // TODO : Handle can bus signals (error, states, ...)
-    // QObject::connect(canDevice, &QCanBusDevice::framesReceived, this, &CanDevice::onFrameReceived);
-    return canDevice->connectDevice();
+    return result;
 }
 
 void CanDevice::disconnect()
@@ -148,18 +151,8 @@ bool CanDevice::sendFrame(quint32 id, const QVariantMap& signalsValues, QString*
         return false;
     }
 
-    QCanBusFrame frame = frameProcessor.prepareFrame((QtCanBus::UniqueId)id, signalsValues);
-
-    if (frame.error() != QCanBusFrame::NoError)
-    {
-        *error = QString("Frame error. Reason: %1 -- %2").arg((unsigned)frame.error()).arg(frameProcessor.errorString());
-        return false;
-    }
-
-    if (id & 0x80000000) frame.setExtendedFrameFormat(true);
-
     QMutexLocker locker(&oneShotFrameMutex);
-    oneShotFrameToSend.enqueue(frame);
+    oneShotFrameToSend.enqueue(FrameData{.id = id, .values = signalsValues});
     return true;
 }
 
@@ -171,15 +164,8 @@ quint32 CanDevice::addPeriodicFrame(quint32 id, const QVariantMap& signalsValues
         return 0;
     }
 
-    QCanBusFrame frame = frameProcessor.prepareFrame((QtCanBus::UniqueId)id, signalsValues);
-    if (frame.error() != QCanBusFrame::NoError)
-    {
-        qDebug() << "Frame error. Reason:" << (unsigned)frame.error() << "--" << frameProcessor.errorString();
-        return 0;
-    }
-
     QMutexLocker locker(&periodicFrameMutex);
-    periodicFrameMap.insert(nextUUID, PeriodicFrame{.frame = frame, .everyMs = everyMs, .lastMs = 0});
+    periodicFrameMap.insert(nextUUID, PeriodicFrame{.frameData = FrameData{.id = id, .values = signalsValues}, .everyMs = everyMs, .lastMs = 0});
 
     return nextUUID++;
 }
@@ -190,35 +176,76 @@ void CanDevice::removePeriodicFrame(quint32 uuid)
     periodicFrameMap.remove(uuid);
 }
 
+QCanBusFrame CanDevice::createFrame(quint32 id, const QVariantMap& signalsValues, QString* error)
+{
+    QCanBusFrame frame = frameProcessor.prepareFrame((QtCanBus::UniqueId)id, signalsValues);
+
+    error->clear();
+
+    if (frame.error() != QCanBusFrame::NoError)
+    {
+        *error = QString("Frame error. Reason: %1 -- %2").arg((unsigned)frame.error()).arg(frameProcessor.errorString());
+    }
+
+    if (id & 0x80000000) frame.setExtendedFrameFormat(true);
+
+    return frame;
+}
+
 void CanDevice::run()
 {
+    QString       errorCreateFrame;
     QElapsedTimer elapse;
     elapse.start();
 
     forever
     {
+        QCoreApplication::processEvents();
+
         if (canDevice != nullptr && canDevice->state() == QCanBusDevice::ConnectedState)
         {
             oneShotFrameMutex.lock();
-            while (false == oneShotFrameToSend.empty())
+            while (false == oneShotFrameToSend.isEmpty())
             {
-                if (false == canDevice->writeFrame(oneShotFrameToSend.dequeue()))
+                qInfo() << "OneShotFrameToSend size:" << oneShotFrameToSend.size();
+                FrameData    frameData = oneShotFrameToSend.dequeue();
+                QCanBusFrame frame     = createFrame(frameData.id, frameData.values, &errorCreateFrame);
+
+                qDebug() << "Creating frame for ID:" << Qt::hex << frameData.id << "values:" << frameData.values;
+                qDebug() << "Frame created, error:" << errorCreateFrame << "frame valid:" << frame.isValid() << "frame error:" << frame.error();
+                if (errorCreateFrame.isEmpty())
                 {
-                    qWarning() << "Failed to send CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                    if (false == canDevice->writeFrame(frame))
+                    {
+                        qWarning() << "Failed to send CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                    }
+                    qDebug() << "writeFrame -- " << "device error:" << canDevice->errorString();
+                }
+                else
+                {
+                    qWarning() << "Failed to create CAN frame:" << errorCreateFrame;
                 }
             }
             oneShotFrameMutex.unlock();
 
             periodicFrameMutex.lock();
-            for (auto& frame : periodicFrameMap)
+            for (auto& pFrame : periodicFrameMap)
             {
-                if (elapse.elapsed() - frame.lastMs >= frame.everyMs)
+                if (elapse.elapsed() - pFrame.lastMs >= pFrame.everyMs)
                 {
-                    if (false == canDevice->writeFrame(frame.frame))
+                    QCanBusFrame frame = createFrame(pFrame.frameData.id, pFrame.frameData.values, &errorCreateFrame);
+                    if (errorCreateFrame.isEmpty())
                     {
-                        qWarning() << "Failed to send (periodic) CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                        if (false == canDevice->writeFrame(frame))
+                        {
+                            qWarning() << "Failed to send (periodic) CAN frame. Reason:" << (unsigned)canDevice->error() << "--" << canDevice->errorString();
+                        }
                     }
-                    frame.lastMs = elapse.elapsed();
+                    else
+                    {
+                        qWarning() << "Failed to create CAN frame:" << errorCreateFrame;
+                    }
+                    pFrame.lastMs = elapse.elapsed();
                 }
             }
             periodicFrameMutex.unlock();
