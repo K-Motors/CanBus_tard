@@ -34,7 +34,7 @@ jobs:
       - name: Create Installer
         shell: cmd
         run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss /DAppVersion=${{ github.ref_name }}
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4

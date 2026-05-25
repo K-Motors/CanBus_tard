@@ -1,7 +1,11 @@
 [Setup]
 AppName=CanBus-tard
-AppVersion=1.0.0
-AppPublisher=Ton Nom
+#ifdef AppVersion
+AppVersion={#AppVersion}
+#else
+AppVersion=dev
+#endif
+AppPublisher=K-Motors
 DefaultDirName={autopf}\CanBus-tard
 DefaultGroupName=CanBus-tard
 OutputDir=installer
