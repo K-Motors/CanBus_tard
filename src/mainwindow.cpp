@@ -277,7 +277,7 @@ void MainWindow::addMessageLine(quint32 id, QTableWidgetItem* items[], bool isIt
     {
         ui->table_can_messages->setItem(row, i, items[i]);
         ui->table_can_messages->item(row, i)->setFont(isItalic ? monoFontItalic : monoFont);
-        ui->table_can_messages->item(row, i)->setForeground(isItalic ? QColor(Qt::gray) : QColor(Qt::black));
+        ui->table_can_messages->item(row, i)->setForeground(isItalic ? QColor(Qt::gray) : QApplication::palette(this).text().color());
     }
 }
 
