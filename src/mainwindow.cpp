@@ -75,16 +75,14 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
     ui->setupUi(this);
     this->setWindowTitle("DBC Viewer - " + QString(SOFT_VERSION));
 
+    QFontDatabase::addApplicationFont(":/font/SudoVariable.ttf");
+
     setWindowIcon(QIcon(":/img/logo.png"));
     restoreGeometry(settings->value(SETTINGS_KEY_WIN_GEOMETRY).toByteArray());
     restoreState(settings->value(SETTINGS_KEY_WIN_STATE).toByteArray());
 
-    monoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    monoFont.setPointSize(10);
-
-    monoFontItalic = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    monoFontItalic.setPointSize(10);
-    monoFontItalic.setItalic(true);
+    monoFont       = QFont("Sudo Var", 10);
+    monoFontItalic = QFont("Sudo Var", 10, QFont::Normal, true);
 
     dockSignalWatcher.init(ui);
     dockSendMessage.init(ui);
@@ -458,6 +456,6 @@ void MainWindow::refreshTable()
 
 int MainWindow::computeTextSize(const QString& text)
 {
-    QFontMetrics fm(ui->table_can_messages->font());
+    QFontMetrics fm(monoFont);
     return fm.horizontalAdvance(text) + 10; // +10 for padding
 }

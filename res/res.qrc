@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>img/logo.png</file>
+        <file>font/SudoVariable.ttf</file>
     </qresource>
 </RCC>
