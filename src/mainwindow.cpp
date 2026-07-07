@@ -73,7 +73,7 @@ MainWindow::MainWindow(QSettings* settings, QWidget* parent)
       dockSignalWatcher{}, dockSendMessage{canDevice, settings, this}, isConnected{false}, selectedId{-1}
 {
     ui->setupUi(this);
-    this->setWindowTitle("DBC Viewer - " + QString(SOFT_VERSION));
+    this->setWindowTitle("Can Bus-tard - " + QString(SOFT_VERSION));
 
     QFontDatabase::addApplicationFont(":/font/SudoVariable.ttf");
 
